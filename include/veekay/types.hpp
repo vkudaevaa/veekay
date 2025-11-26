@@ -232,6 +232,11 @@ union vec3 {
 		vec3 result = vector;
 
 		float len = length(vector);
+		
+		
+		if (len < 1e-6) {
+			return {0.0f, 0.0f, 0.0f}; 
+		}
 
 		result.x /= len;
 		result.y /= len;
@@ -400,6 +405,34 @@ union mat4 {
 		return result;
 	}
 
+	static mat4 look_at(vec3 position, vec3 target, vec3 up) {
+		vec3 z_axis = veekay::vec3::normalized(target - position); 
+		vec3 x_axis = veekay::vec3::normalized(veekay::vec3::cross(up, z_axis));
+		vec3 y_axis = veekay::vec3::cross(z_axis, x_axis);
+
+		mat4 result{}; 
+
+		result[0][0] = x_axis.x;
+		result[0][1] = x_axis.y;
+		result[0][2] = x_axis.z;
+
+		result[1][0] = y_axis.x;
+		result[1][1] = y_axis.y;
+		result[1][2] = y_axis.z;
+
+		result[2][0] = -z_axis.x;
+		result[2][1] = -z_axis.y;
+		result[2][2] = -z_axis.z;
+		
+		result[3][0] = -veekay::vec3::dot(x_axis, position);
+		result[3][1] = -veekay::vec3::dot(y_axis, position);
+		result[3][2] = -veekay::vec3::dot(z_axis, position);
+		result[3][3] = 1.0f; 
+
+		return result;
+	}
+
+
 	static mat4 transpose(const mat4& matrix) {
 		mat4 result{};
 
@@ -430,4 +463,4 @@ union mat4 {
 	const vec4& operator[](size_t index) const { return columns[index]; }
 };
 
-} // namespace veekay
+}
