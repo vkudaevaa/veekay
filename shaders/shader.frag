@@ -1,20 +1,19 @@
 #version 450
 
-// получаем данные из вершинного шейдера
 layout(location = 0) in vec3 f_worldPos;
 layout(location = 1) in vec3 f_normal;
 layout(location = 2) in vec2 f_uv;
 
-// на выходе конечный цвет пикселя
 layout(location = 0) out vec4 final_color;
 
+// ТАКИЕ ЖЕ как в вершинном шейдере!
 layout(binding = 1, std140) uniform ModelUniforms {
     mat4 model;
     vec3 albedo_color;
     float _pad0;
     vec3 specular_color;
     float shininess;
-} model_uniforms;
+} model_uniforms; // Только тут добавляем имя экземпляра
 
 layout(binding = 0, std140) uniform SceneUniforms {
     mat4 view_projection;
@@ -23,7 +22,7 @@ layout(binding = 0, std140) uniform SceneUniforms {
     uint spot_light_count;
     uint point_light_count;
     float _pad1[2];
-} scene_uniforms;
+} scene_uniforms; // И тут тоже
 
 layout(binding = 2, std140) uniform DirectionalLightUBO {
     vec3 direction;
@@ -33,6 +32,14 @@ layout(binding = 2, std140) uniform DirectionalLightUBO {
     float intensity;
     float _pad2[3];
 } dir_light;
+
+// Time uniforms для анимации солнца
+layout(binding = 8, std140) uniform TimeUniforms {
+    float time;        // Текущее время в секундах
+    float frequency;   // Частота пульсации
+    float amplitude;   // Амплитуда волны
+    float speed;       // Скорость волны
+} time_uniforms;
 
 // Storage Buffer для прожекторов
 struct SpotLight {
@@ -67,9 +74,12 @@ layout(binding = 4, std430) readonly buffer PointLightsSSBO {
     PointLight point_lights[];
 };
 
+// НОВЫЙ: сэмплер текстуры (binding 5 как в дескрипторах)
+layout(binding = 5) uniform sampler2D albedo_texture;
+
 const float ambientStrength = 0.3;
 
-// Универсальная функция Блинна-Фонга
+// Универсальная функция Блинна-Фонга (остается без изменений)
 vec3 calcBlinnPhong(vec3 N, vec3 L, vec3 V, vec3 lightColor, float intensity, 
                    vec3 albedo, vec3 specular, float shininess, float attenuation, float spotFactor) {
     
@@ -84,16 +94,15 @@ vec3 calcBlinnPhong(vec3 N, vec3 L, vec3 V, vec3 lightColor, float intensity,
     return blinnPhong * intensity * attenuation * spotFactor;
 }
 
-// Направленный свет
+// Направленный свет (остается без изменений)
 vec3 calcDirectional(vec3 N, vec3 V, vec3 albedo, vec3 specular, float shininess) {
-    // -dir_light.direction - направление к свету
-	vec3 L = normalize(-dir_light.direction);
+    vec3 L = normalize(-dir_light.direction);
     
     return calcBlinnPhong(N, L, V, dir_light.color, dir_light.intensity, 
                          albedo, specular, shininess, 1.0, 1.0);
 }
 
-// Прожекторный свет
+// Прожекторный свет (остается без изменений)
 vec3 calcSpot(vec3 N, vec3 V, vec3 fragPos, SpotLight light, vec3 albedo, vec3 specular, float shininess) {
     vec3 toLight = light.position - fragPos;
     float dist = length(toLight);
@@ -121,11 +130,11 @@ vec3 calcSpot(vec3 N, vec3 V, vec3 fragPos, SpotLight light, vec3 albedo, vec3 s
                          albedo, specular, shininess, attenuation, spotFactor);
 }
 
-// Точечный свет
+// Точечный свет (остается без изменений)
 vec3 calcPoint(vec3 N, vec3 V, vec3 fragPos, PointLight light, vec3 albedo, vec3 specular, float shininess) {
     // Вектор от точки к источнику света
-	vec3 toLight = light.position - fragPos;
-	// Расстояние до источника
+    vec3 toLight = light.position - fragPos;
+    // Расстояние до источника
     float dist = length(toLight);
     
     if (dist <= 0.0001 || dist > light.radius) return vec3(0.0);
@@ -142,11 +151,49 @@ vec3 calcPoint(vec3 N, vec3 V, vec3 fragPos, PointLight light, vec3 albedo, vec3
                          albedo, specular, shininess, attenuation, 1.0);
 }
 
-//объединяем все типы освещения в единый цвет пикселя
 void main() {
+    // Нормализуем нормаль
     vec3 N = normalize(f_normal);
     vec3 V = normalize(scene_uniforms.camera_position - f_worldPos);
-    vec3 albedo = model_uniforms.albedo_color.rgb;
+    
+    vec2 uv = f_uv;
+    
+    // ПРОСТАЯ ВОЛНОВАЯ АНИМАЦИЯ ТОЛЬКО ДЛЯ СОЛНЦА
+    // Определяем солнце по shininess = 128.0
+    if (abs(model_uniforms.shininess - 128.0) < 0.1) {
+        // 1. Простая пульсация масштаба
+        float pulse = sin(time_uniforms.time * time_uniforms.frequency) * 
+                     time_uniforms.amplitude * 0.03;
+        uv = (uv - 0.5) * (1.0 + pulse) + 0.5;
+        
+        // 2. Волновое искажение от центра
+        vec2 center_vec = uv - 0.5;
+        float dist_from_center = length(center_vec);
+        
+        // Синусоидальная волна, распространяющаяся от центра
+        float wave = sin(dist_from_center * 15.0 - time_uniforms.time * time_uniforms.speed) * 
+                    time_uniforms.amplitude * 0.02;
+        
+        // Сдвигаем UV в направлении от центра
+        uv += normalize(center_vec) * wave;
+        
+        // 3. Медленное вращение текстуры
+        float rotation_angle = sin(time_uniforms.time * 0.3) * 0.05;
+        mat2 rotation = mat2(
+            cos(rotation_angle), -sin(rotation_angle),
+            sin(rotation_angle), cos(rotation_angle)
+        );
+        uv = rotation * (uv - 0.5) + 0.5;
+    }
+    
+    // Получаем цвет текстуры с анимированными UV координатами
+    vec3 tex_color = texture(albedo_texture, uv).rgb;
+    
+    // Безопасная S-образная кривая с ограничением (ТОЛЬКО ДЛЯ ВСЕХ ОБЪЕКТОВ)
+    vec3 safe_tex = clamp(tex_color, vec3(0.001), vec3(0.999));
+    tex_color = safe_tex / (vec3(1.0) - safe_tex);
+
+    vec3 albedo = tex_color * model_uniforms.albedo_color;
     vec3 specular = model_uniforms.specular_color;
     float shininess = model_uniforms.shininess;
 
@@ -166,6 +213,7 @@ void main() {
         color += calcPoint(N, V, f_worldPos, point_lights[i], albedo, specular, shininess);
     }
 
+    // Тонмэппинг
     color = color / (color + vec3(1.0));
 
     final_color = vec4(color, 1.0);
