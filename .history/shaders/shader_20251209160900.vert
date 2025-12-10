@@ -29,18 +29,16 @@ layout(binding = 1, std140) uniform ModelUniforms {
 
 void main() {
     vec4 worldPos4 = model * vec4(v_position, 1.0);
-    
-    // ИСПРАВЛЕНИЕ: Используйте обратную транспонированную матрицу
-    mat3 normalMatrix = transpose(inverse(mat3(model)));
-    vec3 worldNormal = normalize(normalMatrix * v_normal);
-    
+    vec3 worldNormal = normalize(mat3(model) * v_normal);
+
+    // преобразуем из мировых координат в координаты камеры и применяем перспективу
     gl_Position = view_projection * worldPos4;
-    
+
     f_worldPos = worldPos4.xyz;
-    f_normal = worldNormal;  // Исправленная нормаль
+    f_normal = worldNormal;
     f_uv = v_uv;
     
-    // Shadow coordinates
+    // Shadow coordinates (как в эталонном коде)
     f_dirLightSpacePos = dir_light_matrix * worldPos4;
     f_spotLightSpacePos = spot_light_matrix * worldPos4;
 }

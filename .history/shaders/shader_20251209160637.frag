@@ -8,14 +8,14 @@ layout(location = 4) in vec4 f_spotLightSpacePos;
 
 layout(location = 0) out vec4 final_color;
 
-
+// ТАКИЕ ЖЕ как в вершинном шейдере!
 layout(binding = 1, std140) uniform ModelUniforms {
     mat4 model;
     vec3 albedo_color;
     float _pad0;
     vec3 specular_color;
     float shininess;
-} model_uniforms; 
+} model_uniforms; // Только тут добавляем имя экземпляра
 
 layout(binding = 0, std140) uniform SceneUniforms {
     mat4 view_projection;
@@ -24,7 +24,6 @@ layout(binding = 0, std140) uniform SceneUniforms {
     vec3 camera_position;
     float _pad0;
     uint spot_light_count;
-    float _pad1[3];
 } scene_uniforms;
 
 layout(binding = 2, std140) uniform DirectionalLightUBO {

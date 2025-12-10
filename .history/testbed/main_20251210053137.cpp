@@ -154,13 +154,13 @@ namespace {
         VkRenderPass shadow_render_pass = VK_NULL_HANDLE;
         VkSampler shadow_sampler = VK_NULL_HANDLE;
 
-        // карта теней для направленного света
+        // 1. Directional shadow map
         VkFramebuffer shadow_dir_framebuffer = VK_NULL_HANDLE;
         VkImage shadow_dir_image = VK_NULL_HANDLE;
         VkDeviceMemory shadow_dir_memory = VK_NULL_HANDLE;
         VkImageView shadow_dir_view = VK_NULL_HANDLE;
 
-        // для прожекторного
+        // 2. Spot Light shadow map
         VkFramebuffer shadow_spot_framebuffer = VK_NULL_HANDLE;
         VkImage shadow_spot_image = VK_NULL_HANDLE;
         VkDeviceMemory shadow_spot_memory = VK_NULL_HANDLE;
@@ -274,6 +274,7 @@ namespace {
         return result;
     }
 
+    // Загрузка текстуры из файла (по аналогии с кодом из лекции)
     veekay::graphics::Texture* loadTextureFromFile(const char* path, VkCommandBuffer cmd) {
         std::vector<unsigned char> image_data; // вектор байтов, где каждые 4 байта образуют пиксель
         unsigned width = 0, height = 0;
@@ -433,7 +434,7 @@ namespace {
         VkImageCreateInfo imageInfo{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                 .imageType = VK_IMAGE_TYPE_2D,
-                .format = VK_FORMAT_D32_SFLOAT, // формат для хранения глубины
+                .format = VK_FORMAT_D32_SFLOAT,
                 .extent = {shadow_map_size, shadow_map_size, 1},
                 .mipLevels = 1, 
                 .arrayLayers = 1, 
@@ -443,7 +444,6 @@ namespace {
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE, 
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
         };
-        // создание логического изоьражения
         vkCreateImage(device, &imageInfo, nullptr, &image);
 
         VkMemoryRequirements memReq;
@@ -454,18 +454,15 @@ namespace {
                 .memoryTypeIndex = findMemoryType(memReq.memoryTypeBits)
         };
         vkAllocateMemory(device, &allocInfo, nullptr, &mem);
-        // привязываем логическое изображение к физической памяти
-        vkBindImageMemory(device, image, mem, 0); 
+        vkBindImageMemory(device, image, mem, 0);
 
         VkImageViewCreateInfo viewInfo{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                // привязка к созданному логическому изображению
                 .image = image, 
                 .viewType = VK_IMAGE_VIEW_TYPE_2D, 
                 .format = VK_FORMAT_D32_SFLOAT,
                 .subresourceRange = {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}
         };
-        // создаём представление изображения
         vkCreateImageView(device, &viewInfo, nullptr, &view);
     }
 
@@ -473,8 +470,8 @@ namespace {
         VkDevice &device = veekay::app.vk_device;
         VkPhysicalDevice &physical_device = veekay::app.vk_physical_device;
 
-        {   
-            // создаём сэмплер теней
+        // 1. Shadow Resources (как в эталонном коде)
+        {
             VkSamplerCreateInfo samplerInfo{
                     .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
                     .magFilter = VK_FILTER_LINEAR, 
@@ -492,7 +489,6 @@ namespace {
             };
             vkCreateSampler(device, &samplerInfo, nullptr, &shadow_sampler);
 
-            // структура, куда записываются свойства карты теней
             VkAttachmentDescription depthAttachment{
                     .format = VK_FORMAT_D32_SFLOAT, 
                     .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -539,7 +535,7 @@ namespace {
             };
             vkCreateRenderPass(device, &rpInfo, nullptr, &shadow_render_pass);
 
-            // создание карты теней и фреймбуфера
+            // 1. Dir Map
             createShadowMapResource(device, shadow_dir_image, shadow_dir_memory, shadow_dir_view);
             VkFramebufferCreateInfo fbDirInfo{
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, 
@@ -552,6 +548,7 @@ namespace {
             };
             vkCreateFramebuffer(device, &fbDirInfo, nullptr, &shadow_dir_framebuffer);
 
+            // 2. Spot Map
             createShadowMapResource(device, shadow_spot_image, shadow_spot_memory, shadow_spot_view);
             VkFramebufferCreateInfo fbSpotInfo{
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, 
@@ -637,6 +634,7 @@ namespace {
                     .pVertexAttributeDescriptions = attributes,
             };
 
+            // Shadow vertex input (только позиция)
             VkVertexInputAttributeDescription shadow_attributes[] = {
                 {
                     .location = 0,
@@ -707,6 +705,7 @@ namespace {
                     .pScissors = &scissor,
             };
 
+            // Shadow viewport
             VkViewport shadow_viewport{
                     .x = 0.0f,
                     .y = 0.0f,
@@ -785,6 +784,7 @@ namespace {
                 }
             }
 
+            // Layout дескрипторов (добавлены теневые карты)
             {
                 VkDescriptorSetLayoutBinding bindings[] = {
                     {

@@ -492,7 +492,6 @@ namespace {
             };
             vkCreateSampler(device, &samplerInfo, nullptr, &shadow_sampler);
 
-            // структура, куда записываются свойства карты теней
             VkAttachmentDescription depthAttachment{
                     .format = VK_FORMAT_D32_SFLOAT, 
                     .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -539,7 +538,7 @@ namespace {
             };
             vkCreateRenderPass(device, &rpInfo, nullptr, &shadow_render_pass);
 
-            // создание карты теней и фреймбуфера
+            // 1. Dir Map
             createShadowMapResource(device, shadow_dir_image, shadow_dir_memory, shadow_dir_view);
             VkFramebufferCreateInfo fbDirInfo{
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, 
@@ -552,6 +551,7 @@ namespace {
             };
             vkCreateFramebuffer(device, &fbDirInfo, nullptr, &shadow_dir_framebuffer);
 
+            // 2. Spot Map
             createShadowMapResource(device, shadow_spot_image, shadow_spot_memory, shadow_spot_view);
             VkFramebufferCreateInfo fbSpotInfo{
                 .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, 
@@ -637,6 +637,7 @@ namespace {
                     .pVertexAttributeDescriptions = attributes,
             };
 
+            // Shadow vertex input (только позиция)
             VkVertexInputAttributeDescription shadow_attributes[] = {
                 {
                     .location = 0,
@@ -707,6 +708,7 @@ namespace {
                     .pScissors = &scissor,
             };
 
+            // Shadow viewport
             VkViewport shadow_viewport{
                     .x = 0.0f,
                     .y = 0.0f,
@@ -785,6 +787,7 @@ namespace {
                 }
             }
 
+            // Layout дескрипторов (добавлены теневые карты)
             {
                 VkDescriptorSetLayoutBinding bindings[] = {
                     {
