@@ -17,7 +17,7 @@ namespace {
 
     constexpr uint32_t max_models = 1024;
     constexpr uint32_t max_spot_lights = 16;
-    constexpr uint32_t shadow_map_size = 2048; // разрешение карты теней
+    constexpr uint32_t shadow_map_size = 2048;
 
     struct Vertex {
         veekay::vec3 position;
@@ -74,7 +74,7 @@ namespace {
     };
 
     struct ShadowPushConstant {
-        veekay::mat4 light_view_proj; // матрица вида и проекции для текущего света
+        veekay::mat4 light_view_proj;
     };
 
     struct Mesh {
@@ -97,7 +97,7 @@ namespace {
         veekay::vec3 albedo_color;
         veekay::vec3 specular_color;
         float shininess;
-        uint32_t descriptor_set_index; // индекс в массиве дескрипторных наборов
+        uint32_t descriptor_set_index; // Индекс в массиве дескрипторных наборов
     };
 
     struct Camera {
@@ -133,7 +133,6 @@ namespace {
     }
 
     inline namespace {
-        // инициализация шейдерных модулей
         VkShaderModule vertex_shader_module = VK_NULL_HANDLE;
         VkShaderModule fragment_shader_module = VK_NULL_HANDLE;
         VkShaderModule shadow_vertex_shader_module = VK_NULL_HANDLE;
@@ -151,7 +150,7 @@ namespace {
         // как будет происходить рендеринг глубины для создания карты теней, 
         // независимо от того, для какого источника света она создается.
         VkPipelineLayout shadow_pipeline_layout = VK_NULL_HANDLE;
-        VkPipeline shadow_pipeline = VK_NULL_HANDLE; // конвейер для теней
+        VkPipeline shadow_pipeline = VK_NULL_HANDLE;
         VkRenderPass shadow_render_pass = VK_NULL_HANDLE;
         VkSampler shadow_sampler = VK_NULL_HANDLE;
 
@@ -444,7 +443,7 @@ namespace {
                 .sharingMode = VK_SHARING_MODE_EXCLUSIVE, 
                 .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
         };
-        // создание физического изображения
+        // создание логического изоьражения
         vkCreateImage(device, &imageInfo, nullptr, &image);
 
         VkMemoryRequirements memReq;
@@ -455,12 +454,12 @@ namespace {
                 .memoryTypeIndex = findMemoryType(memReq.memoryTypeBits)
         };
         vkAllocateMemory(device, &allocInfo, nullptr, &mem);
-        // привязываем изображение к физической памяти
+        // привязываем логическое изображение к физической памяти
         vkBindImageMemory(device, image, mem, 0); 
 
         VkImageViewCreateInfo viewInfo{
                 .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                // привязка к созданному физическому изображению
+                // привязка к созданному логическому изображению
                 .image = image, 
                 .viewType = VK_IMAGE_VIEW_TYPE_2D, 
                 .format = VK_FORMAT_D32_SFLOAT,
@@ -511,7 +510,7 @@ namespace {
                 .pDepthStencilAttachment = &depthRef
             };
             
-            VkSubpassDependency dependencies[2]; // определяет барьеры синхронизации между проходами
+            VkSubpassDependency dependencies[2];
             dependencies[0] = {
                 VK_SUBPASS_EXTERNAL, 0, 
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -538,7 +537,7 @@ namespace {
                 .dependencyCount = 2, 
                 .pDependencies = dependencies
             };
-            vkCreateRenderPass(device, &rpInfo, nullptr, &shadow_render_pass); // создаём объект прохода рендеринга
+            vkCreateRenderPass(device, &rpInfo, nullptr, &shadow_render_pass);
 
             // создание карты теней и фреймбуфера
             createShadowMapResource(device, shadow_dir_image, shadow_dir_memory, shadow_dir_view);
@@ -638,7 +637,6 @@ namespace {
                     .pVertexAttributeDescriptions = attributes,
             };
 
-            // как атрибут позиции вершины попадает в шейдер
             VkVertexInputAttributeDescription shadow_attributes[] = {
                 {
                     .location = 0,
@@ -787,7 +785,7 @@ namespace {
                 }
             }
 
-            {   // связываем ресурсы с шейдерами
+            {
                 VkDescriptorSetLayoutBinding bindings[] = {
                     {
                         .binding = 0,
@@ -825,7 +823,7 @@ namespace {
                         .descriptorCount = 1,
                         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                     },
-                    {   // связываем карту теней для каждого освещения с фрагментным шейдером
+                    {
                         .binding = 9,
                         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                         .descriptorCount = 1,
@@ -926,8 +924,8 @@ namespace {
 
                 VkPipelineDepthStencilStateCreateInfo shadow_depth_info{
                     .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-                    .depthTestEnable = true, // тест глубины
-                    .depthWriteEnable = true, // запись глубины
+                    .depthTestEnable = true,
+                    .depthWriteEnable = true,
                     .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
                 };
 
@@ -1534,6 +1532,7 @@ namespace {
         }
 
         // Calculate light matrices
+        // 1. Directional Light Matrix
         veekay::vec3 dirL = {0, -1, 0};
         if (directional_light_buffer && directional_light_buffer->mapped_region)
             dirL = reinterpret_cast<DirectionalLightUBO*>(directional_light_buffer->mapped_region)->direction;
@@ -1546,6 +1545,7 @@ namespace {
         veekay::mat4 dirProj = mat4_ortho(-20, 20, -20, 20, 0.1f, 100.0f);
         veekay::mat4 dirMatrix = dirView * dirProj;
 
+        // 2. Spot Light Matrix
         veekay::vec3 spotPos = {spot_pos[0], spot_pos[1], spot_pos[2]};
         veekay::vec3 spotDir = veekay::vec3::normalized({spot_dir[0], spot_dir[1], spot_dir[2]});
         veekay::vec3 spotUP = {0, 1, 0};
@@ -1654,7 +1654,7 @@ namespace {
         };
 
         SceneUniforms *scene_uni = (SceneUniforms *) scene_uniforms_buffer->mapped_region;
-        // заполняем карты теней
+
         renderShadowPass(shadow_dir_framebuffer, scene_uni->dir_light_matrix);
         renderShadowPass(shadow_spot_framebuffer, scene_uni->spot_light_matrix);
 

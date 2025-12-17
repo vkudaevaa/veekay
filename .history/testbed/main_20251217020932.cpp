@@ -1654,7 +1654,7 @@ namespace {
         };
 
         SceneUniforms *scene_uni = (SceneUniforms *) scene_uniforms_buffer->mapped_region;
-        // заполняем карты теней
+
         renderShadowPass(shadow_dir_framebuffer, scene_uni->dir_light_matrix);
         renderShadowPass(shadow_spot_framebuffer, scene_uni->spot_light_matrix);
 

@@ -63,7 +63,7 @@ layout(binding = 3, std430) readonly buffer SpotLightsSSBO {
 };
 
 layout(binding = 5) uniform sampler2D albedo_texture;
-layout(binding = 9) uniform sampler2DShadow dirShadowMap; // карты теней
+layout(binding = 9) uniform sampler2DShadow dirShadowMap;
 layout(binding = 10) uniform sampler2DShadow spotShadowMap;
 
 const float ambientStrength = 0.3;
@@ -78,7 +78,7 @@ float calcShadow(vec4 lightSpacePos, sampler2DShadow shadowMap) {
     return 1.0 - shadow;
 }
 
-// Универсальная функция Блинна-Фонга
+// Универсальная функция Блинна-Фонга (со shadow factor)
 vec3 calcBlinnPhong(vec3 N, vec3 L, vec3 V, vec3 lightColor, float intensity, 
                    vec3 albedo, vec3 specular, float shininess, float attenuation, 
                    float spotFactor, float shadowFactor) {

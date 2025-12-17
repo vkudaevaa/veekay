@@ -78,7 +78,7 @@ float calcShadow(vec4 lightSpacePos, sampler2DShadow shadowMap) {
     return 1.0 - shadow;
 }
 
-// Универсальная функция Блинна-Фонга
+// Универсальная функция Блинна-Фонга (со shadow factor)
 vec3 calcBlinnPhong(vec3 N, vec3 L, vec3 V, vec3 lightColor, float intensity, 
                    vec3 albedo, vec3 specular, float shininess, float attenuation, 
                    float spotFactor, float shadowFactor) {

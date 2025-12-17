@@ -638,7 +638,6 @@ namespace {
                     .pVertexAttributeDescriptions = attributes,
             };
 
-            // как атрибут позиции вершины попадает в шейдер
             VkVertexInputAttributeDescription shadow_attributes[] = {
                 {
                     .location = 0,
@@ -787,7 +786,7 @@ namespace {
                 }
             }
 
-            {   // связываем ресурсы с шейдерами
+            {
                 VkDescriptorSetLayoutBinding bindings[] = {
                     {
                         .binding = 0,
@@ -825,7 +824,7 @@ namespace {
                         .descriptorCount = 1,
                         .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                     },
-                    {   // связываем карту теней для каждого освещения с фрагментным шейдером
+                    {
                         .binding = 9,
                         .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                         .descriptorCount = 1,
@@ -926,8 +925,8 @@ namespace {
 
                 VkPipelineDepthStencilStateCreateInfo shadow_depth_info{
                     .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-                    .depthTestEnable = true, // тест глубины
-                    .depthWriteEnable = true, // запись глубины
+                    .depthTestEnable = true,
+                    .depthWriteEnable = true,
                     .depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL,
                 };
 
@@ -1534,6 +1533,7 @@ namespace {
         }
 
         // Calculate light matrices
+        // 1. Directional Light Matrix
         veekay::vec3 dirL = {0, -1, 0};
         if (directional_light_buffer && directional_light_buffer->mapped_region)
             dirL = reinterpret_cast<DirectionalLightUBO*>(directional_light_buffer->mapped_region)->direction;
@@ -1546,6 +1546,7 @@ namespace {
         veekay::mat4 dirProj = mat4_ortho(-20, 20, -20, 20, 0.1f, 100.0f);
         veekay::mat4 dirMatrix = dirView * dirProj;
 
+        // 2. Spot Light Matrix
         veekay::vec3 spotPos = {spot_pos[0], spot_pos[1], spot_pos[2]};
         veekay::vec3 spotDir = veekay::vec3::normalized({spot_dir[0], spot_dir[1], spot_dir[2]});
         veekay::vec3 spotUP = {0, 1, 0};
@@ -1654,7 +1655,7 @@ namespace {
         };
 
         SceneUniforms *scene_uni = (SceneUniforms *) scene_uniforms_buffer->mapped_region;
-        // заполняем карты теней
+
         renderShadowPass(shadow_dir_framebuffer, scene_uni->dir_light_matrix);
         renderShadowPass(shadow_spot_framebuffer, scene_uni->spot_light_matrix);
 

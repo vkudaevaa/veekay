@@ -3,7 +3,7 @@
 layout(location = 0) in vec3 f_worldPos;
 layout(location = 1) in vec3 f_normal;
 layout(location = 2) in vec2 f_uv;
-layout(location = 3) in vec4 f_dirLightSpacePos;// позиция вершины преобразованная в пространство направленного света
+layout(location = 3) in vec4 f_dirLightSpacePos;
 layout(location = 4) in vec4 f_spotLightSpacePos;
 
 layout(location = 0) out vec4 final_color;
@@ -62,8 +62,10 @@ layout(binding = 3, std430) readonly buffer SpotLightsSSBO {
     SpotLight spot_lights[];
 };
 
+// Текстура (binding 5 как в дескрипторах)
 layout(binding = 5) uniform sampler2D albedo_texture;
-layout(binding = 9) uniform sampler2DShadow dirShadowMap; // карты теней
+// Shadow maps (как в эталонном коде)
+layout(binding = 9) uniform sampler2DShadow dirShadowMap;
 layout(binding = 10) uniform sampler2DShadow spotShadowMap;
 
 const float ambientStrength = 0.3;
@@ -78,7 +80,7 @@ float calcShadow(vec4 lightSpacePos, sampler2DShadow shadowMap) {
     return 1.0 - shadow;
 }
 
-// Универсальная функция Блинна-Фонга
+// Универсальная функция Блинна-Фонга (со shadow factor)
 vec3 calcBlinnPhong(vec3 N, vec3 L, vec3 V, vec3 lightColor, float intensity, 
                    vec3 albedo, vec3 specular, float shininess, float attenuation, 
                    float spotFactor, float shadowFactor) {
